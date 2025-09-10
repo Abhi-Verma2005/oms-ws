@@ -1,7 +1,6 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const { notificationWebSocketServer } = require('./websocket-server.js');
-const api = require('./api.js');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || '0.0.0.0'; // Use 0.0.0.0 for Render
@@ -64,12 +63,53 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    // API endpoints
+    if (pathname === '/api/broadcast' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+      req.on('end', () => {
+        try {
+          const { notification } = JSON.parse(body);
+          
+          if (!notification) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Notification data is required' }));
+            return;
+          }
+
+          console.log('📢 Broadcasting notification via API:', {
+            id: notification.id,
+            title: notification.title,
+            isGlobal: notification.isGlobal
+          });
+
+          notificationWebSocketServer.broadcastNotification(notification);
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            success: true, 
+            message: 'Notification broadcasted successfully',
+            connectedClients: notificationWebSocketServer.getConnectedClientsCount()
+          }));
+        } catch (error) {
+          console.error('❌ Error processing broadcast request:', error);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Internal server error' }));
+        }
+      });
+      return;
+    }
+
     // For other requests, return a simple response
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ 
       message: 'WebSocket server is running',
       status: 'healthy',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      connectedClients: notificationWebSocketServer.getConnectedClientsCount(),
+      adminClients: notificationWebSocketServer.getAdminClientsCount()
     }));
   } catch (err) {
     console.error('❌ Error occurred handling', req.url, err);
@@ -90,9 +130,11 @@ server
   })
   .listen(port, () => {
     const wsUrl = getWebSocketUrl();
-    console.log('🎉 WebSocket server started successfully!');
+    console.log('🎉 WebSocket server with API started successfully!');
     console.log(`🌐 HTTP Server: http://${hostname}:${port}`);
     console.log(`🔌 WebSocket Endpoint: ${wsUrl}/api/notifications/ws`);
-    console.log('📊 Monitoring WebSocket connections and notifications...');
+    console.log(`📡 API Endpoint: http://${hostname}:${port}/api/broadcast`);
+    console.log(`🏥 Health Check: http://${hostname}:${port}/health`);
+    console.log('📊 Single port for both HTTP and WebSocket!');
     console.log('='.repeat(60));
   });
