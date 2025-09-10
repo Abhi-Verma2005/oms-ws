@@ -4,12 +4,16 @@ const { notificationWebSocketServer } = require('./websocket-server.js');
 const api = require('./api.js');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = process.env.HOSTNAME || 'localhost';
-const port = process.env.WS_PORT || 8000;
+const hostname = process.env.HOSTNAME || '0.0.0.0'; // Use 0.0.0.0 for Render
+const port = process.env.PORT || process.env.WS_PORT || 8000; // Render uses PORT env var
 
 // WebSocket URL utility function
 function getWebSocketUrl() {
-  return process.env.WEBSOCKET_URL || 'ws://localhost:8000';
+  if (dev) {
+    return process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8000';
+  }
+  // For production, use the Render URL
+  return process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'wss://oms-ws.onrender.com';
 }
 
 console.log('🚀 Starting WebSocket server...');
@@ -24,6 +28,19 @@ const server = createServer(async (req, res) => {
 
     // Log all incoming requests
     console.log(`📥 ${req.method} ${pathname} - ${new Date().toISOString()}`);
+
+    // Health check endpoint
+    if (pathname === '/health' || pathname === '/') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        message: 'WebSocket server is running',
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        connectedClients: notificationWebSocketServer.getConnectedClientsCount(),
+        adminClients: notificationWebSocketServer.getAdminClientsCount()
+      }));
+      return;
+    }
 
     if (pathname === '/api/notifications/ws') {
       console.log('🔌 WebSocket connection attempt detected');

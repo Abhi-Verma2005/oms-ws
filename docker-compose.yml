@@ -11,7 +11,7 @@ services:
       - WS_PORT=8000
       - WS_API_PORT=8001
       - HOSTNAME=0.0.0.0
-      - WEBSOCKET_URL=ws://localhost:8000
+      - NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:8000
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
