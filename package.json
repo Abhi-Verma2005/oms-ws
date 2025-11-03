@@ -1,0 +1,27 @@
+{
+  "name": "backend-ts",
+  "version": "0.1.0",
+  "description": "TypeScript backend for AI orchestrator",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": ["ai", "orchestrator", "websocket"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ws": "^8.18.0",
+    "axios": "^1.7.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.1",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
+
