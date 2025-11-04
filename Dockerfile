@@ -29,7 +29,7 @@ COPY --from=builder /app/dist ./dist
 
 # Default port env; compose will map as needed
 ENV WS_PORT=8080
-EXPOSE 8080
+EXPOSE 8080 8081
 
 # Start the server
 CMD ["node", "dist/index.js"]
