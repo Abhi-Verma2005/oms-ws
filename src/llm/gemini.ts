@@ -10,6 +10,7 @@ export enum GeminiModel {
 export enum AvailableFunction {
   BrowsePublishers = "browsePublishers",
   GetPublisherDetails = "getPublisherDetails",
+  GetWeather = "getWeather",
 }
 
 export enum FunctionExecutionLocation {
