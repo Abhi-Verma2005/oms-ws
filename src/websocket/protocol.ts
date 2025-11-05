@@ -18,6 +18,7 @@ export enum MessageType {
   FunctionExecuteRequest = "function_execute_request",  // Backend → Frontend: Execute this
   FunctionExecuteResponse = "function_execute_response", // Frontend → Backend: Here's the result
   PublishersData = "publishers_data",  // Backend → Frontend: Display publishers in UI
+  CartData = "cart_data",  // Backend → Frontend: Display cart in sidebar
   ExecutionPlanData = "execution_plan_data",  // Backend → Frontend: Display execution plan with todos
   PlanCreated = "plan_created",
   PlanUpdated = "plan_updated",
@@ -29,10 +30,12 @@ export enum MessageType {
   IterationEnd = "iteration_end",
   Heartbeat = "heartbeat",
   Error = "error",
+  StopGeneration = "stop_generation",
 }
 
 export interface JoinRoomMessage {
   chat_id: string;
+  user_id?: string;
 }
 
 export interface RoomMessage {
@@ -42,7 +45,28 @@ export interface RoomMessage {
 
 export interface SendMessageData {
   chat_id: string;
+  user_id?: string;
   message: RoomMessage;
+  selectedDocuments?: string[];
+  cartData?: {
+    items: Array<{
+      id: string;
+      type: "publisher" | "product";
+      name: string;
+      price: number;
+      quantity: number;
+      addedAt?: string;
+      metadata?: {
+        publisherId?: string;
+        website?: string;
+        niche?: string[];
+        dr?: number;
+        da?: number;
+      };
+    }>;
+    totalItems: number;
+    totalPrice: number;
+  };
 }
 
 export interface WebSocketMessage {

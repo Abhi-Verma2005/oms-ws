@@ -22,6 +22,7 @@ export class WebSocketServer {
   private server: WSServer | null = null;
   private clients: ClientMap = {};
   private rooms: RoomMap = {};
+  private roomUsers: Map<string, string> = new Map(); // chatId -> userId
   private port: number;
   private messageHandler: MessageHandler;
 
@@ -98,12 +99,21 @@ export class WebSocketServer {
       case MessageType.JoinChat: {
         const joinData = message.payload as JoinRoomMessage;
         this.joinRoom(address, joinData.chat_id);
+        if (joinData.user_id) {
+          this.roomUsers.set(joinData.chat_id, joinData.user_id);
+          console.log(`[WS] JoinChat chatId=${joinData.chat_id} userId=${joinData.user_id}`);
+        }
         break;
       }
       
       case MessageType.ChatMessage: {
         const chatData = message.payload as SendMessageData;
         this.handleChatMessage(address, chatData);
+        break;
+      }
+      case MessageType.StopGeneration: {
+        const { chat_id } = message.payload as { chat_id: string };
+        this.messageHandler.handleStop(chat_id);
         break;
       }
       
@@ -125,6 +135,13 @@ export class WebSocketServer {
 
   private async handleChatMessage(address: string, data: SendMessageData): Promise<void> {
     const userMessage = data.message.payload;
+    if (data.user_id && !this.roomUsers.has(data.chat_id)) {
+      this.roomUsers.set(data.chat_id, data.user_id);
+      console.log(`[WS] Associated chatId=${data.chat_id} userId=${data.user_id} via ChatMessage`);
+    }
+    
+    // Extract cartData from message payload if it exists
+    const cartData = (userMessage as any).cartData || data.cartData;
     
     // Notify that message was received
     this.broadcastToRoom(data.chat_id, {
@@ -136,7 +153,16 @@ export class WebSocketServer {
 
     // Process the message with the orchestrator
     if (userMessage.role === Role.User) {
-      await this.messageHandler.handleUserMessage(data.chat_id, userMessage, this);
+      if (Array.isArray(data.selectedDocuments)) {
+        console.log(`[WS] Received selectedDocuments count=${data.selectedDocuments.length} chatId=${data.chat_id}`);
+      }
+      await this.messageHandler.handleUserMessage(
+        data.chat_id,
+        userMessage,
+        this,
+        data.selectedDocuments,
+        cartData
+      );
     }
   }
 
@@ -160,6 +186,10 @@ export class WebSocketServer {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
     }
+  }
+
+  getUserIdForChat(chatId: string): string | undefined {
+    return this.roomUsers.get(chatId);
   }
 
   private cleanup(address: string): void {

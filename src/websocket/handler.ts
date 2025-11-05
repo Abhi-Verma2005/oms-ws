@@ -12,9 +12,33 @@ export class MessageHandler {
   async handleUserMessage(
     chatId: string,
     userMessage: ChatMessage,
-    wsServer: WebSocketServer
+    wsServer: WebSocketServer,
+    selectedDocuments?: string[],
+    cartData?: {
+      items: Array<{
+        id: string;
+        type: "publisher" | "product";
+        name: string;
+        price: number;
+        quantity: number;
+        addedAt?: string;
+        metadata?: {
+          publisherId?: string;
+          website?: string;
+          niche?: string[];
+          dr?: number;
+          da?: number;
+        };
+      }>;
+      totalItems: number;
+      totalPrice: number;
+    }
   ): Promise<void> {
-    await this.orchestrator.processMessage(chatId, userMessage, wsServer);
+    await this.orchestrator.processMessage(chatId, userMessage, wsServer, selectedDocuments, cartData);
+  }
+
+  handleStop(chatId: string): void {
+    this.orchestrator.cancel(chatId);
   }
 }
 

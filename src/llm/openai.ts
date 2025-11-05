@@ -10,6 +10,9 @@ export enum OpenAIModel {
 export enum AvailableFunction {
   BrowsePublishers = "browsePublishers",
   GetPublisherDetails = "getPublisherDetails",
+  ViewCart = "viewCart",
+  AddToCart = "addToCart",
+  ProcessPayment = "processPayment",
 }
 
 export enum FunctionExecutionLocation {
@@ -192,6 +195,76 @@ export class OpenAIProvider {
           },
           required: []
         }
+      },
+      {
+        name: AvailableFunction.ViewCart,
+        description: "View the current contents of the shopping cart. Use this to show the user their cart and ask if they want to edit or proceed to checkout.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: []
+        }
+      },
+      {
+        name: AvailableFunction.AddToCart,
+        description: "Add a publisher or product to the shopping cart. Use this when user mentions specific publishers they want to add or says 'add to cart'.",
+        parameters: {
+          type: "object",
+          properties: {
+            type: {
+              type: "string",
+              enum: ["publisher", "product"],
+              description: "Type of item to add"
+            },
+            name: {
+              type: "string",
+              description: "Name of the item"
+            },
+            price: {
+              type: "number",
+              description: "Price of the item in USD"
+            },
+            quantity: {
+              type: "number",
+              description: "Quantity to add (default: 1)"
+            },
+            metadata: {
+              type: "object",
+              description: "Additional metadata about the item (publisherId, website, niche, dr, da)",
+              properties: {
+                publisherId: { type: "string" },
+                website: { type: "string" },
+                niche: { type: "array", items: { type: "string" } },
+                dr: { type: "number" },
+                da: { type: "number" }
+              }
+            }
+          },
+          required: ["type", "name", "price"]
+        }
+      },
+      {
+        name: AvailableFunction.ProcessPayment,
+        description: "Process payment for cart items using Stripe. Use this when user is ready to checkout and says they're done adding items.",
+        parameters: {
+          type: "object",
+          properties: {
+            cartItems: {
+              type: "array",
+              description: "Items in the cart to process payment for",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  price: { type: "number" },
+                  quantity: { type: "number" }
+                }
+              }
+            }
+          },
+          required: ["cartItems"]
+        }
       }
     ];
 
@@ -203,7 +276,8 @@ export class OpenAIProvider {
     messages: ChatMessage[],
     model: OpenAIModel = OpenAIModel.GPT35Turbo,
     useFunctions: boolean = false,
-    additionalFunctions: FunctionDeclaration[] = []
+    additionalFunctions: FunctionDeclaration[] = [],
+    abortSignal?: AbortSignal
   ): Promise<{ candidates: Array<{ content: { parts: Array<{ text?: string; functionCall?: FunctionCallResponse }> } }> }> {
     // Convert chat messages to OpenAI format
     const openAIMessages = messages
@@ -262,7 +336,8 @@ export class OpenAIProvider {
 
     const response = await this.client.post<OpenAIMessageResponse>(
       '/chat/completions',
-      payload
+      payload,
+      { signal: abortSignal }
     );
 
     // Convert OpenAI response to Gemini-like format
